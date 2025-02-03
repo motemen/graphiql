@@ -542,6 +542,9 @@ describe('MessageProcessor with config', () => {
 
     expect(project.lsp._logger.error).not.toHaveBeenCalled();
     expect(await project.lsp._graphQLCache.getSchema('a')).toBeDefined();
+    expect(project.lsp._logger.info).not.toHaveBeenCalledWith(
+      expect.stringMatching(/SyntaxError: Unexpected token/),
+    );
 
     fetchMock.restore();
     mockSchema(
