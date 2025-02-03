@@ -55,7 +55,7 @@ import type {
 import type { UnnormalizedTypeDefPointer } from '@graphql-tools/load';
 
 import { getGraphQLCache, GraphQLCache } from './GraphQLCache';
-import { parseDocument } from './parseDocument';
+import { parseDocument, parseGraphQLFile } from './parseDocument';
 
 import { printSchema, visit, parse, FragmentDefinitionNode } from 'graphql';
 import { tmpdir } from 'node:os';
@@ -1238,13 +1238,13 @@ export class MessageProcessor {
           const uri = URI.file(filePath).toString();
 
           // I would use the already existing graphql-config AST, but there are a few reasons we can't yet
-          const contents = await this._parser(document.rawSDL, uri);
-          if (!contents[0]?.query) {
+          const content = parseGraphQLFile(document.rawSDL);
+          if (!content.query) {
             return;
           }
-          await this._updateObjectTypeDefinition(uri, contents);
-          await this._updateFragmentDefinition(uri, contents);
-          await this._invalidateCache({ version: 1, uri }, uri, contents);
+          await this._updateObjectTypeDefinition(uri, [content]);
+          await this._updateFragmentDefinition(uri, [content]);
+          await this._invalidateCache({ version: 1, uri }, uri, [content]);
         }),
       );
     } catch (err) {
