@@ -218,8 +218,8 @@ describe('MessageProcessor with config', () => {
         character: 0,
       },
       end: {
-        line: 2,
-        character: 1,
+        line: 0,
+        character: 25,
       },
     });
 
