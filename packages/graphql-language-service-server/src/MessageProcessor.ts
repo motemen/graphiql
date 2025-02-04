@@ -55,7 +55,7 @@ import type {
 import type { UnnormalizedTypeDefPointer } from '@graphql-tools/load';
 
 import { getGraphQLCache, GraphQLCache } from './GraphQLCache';
-import { parseDocument, parseGraphQLFile } from './parseDocument';
+import { parseDocument } from './parseDocument';
 
 import { printSchema, visit, parse, FragmentDefinitionNode } from 'graphql';
 import { tmpdir } from 'node:os';
@@ -1223,28 +1223,32 @@ export class MessageProcessor {
   private async _cacheDocumentFilesforProject(project: GraphQLProjectConfig) {
     try {
       const documents = await project.getDocuments();
-      return Promise.all(
-        documents.map(async document => {
-          if (!document.location || !document.rawSDL) {
-            return;
-          }
+      const documentLocations = new Set(
+        documents
+          .filter(doc => doc.location && doc.rawSDL)
+          .map(doc => doc.location!),
+      );
 
-          let filePath = document.location;
+      return Promise.all(
+        Array.from(documentLocations).map(async loc => {
+          let filePath = loc;
           if (!path.isAbsolute(filePath)) {
-            filePath = path.join(project.dirpath, document.location);
+            filePath = path.join(project.dirpath, loc);
           }
 
           // build full system URI path with protocol
           const uri = URI.file(filePath).toString();
 
+          const fileContent = await readFile(filePath, 'utf-8');
           // I would use the already existing graphql-config AST, but there are a few reasons we can't yet
-          const content = parseGraphQLFile(document.rawSDL);
-          if (!content.query) {
+          const contents = await parseDocument(fileContent, uri);
+          if (!contents[0]?.query) {
             return;
           }
-          await this._updateObjectTypeDefinition(uri, [content]);
-          await this._updateFragmentDefinition(uri, [content]);
-          await this._invalidateCache({ version: 1, uri }, uri, [content]);
+
+          await this._updateObjectTypeDefinition(uri, contents);
+          await this._updateFragmentDefinition(uri, contents);
+          await this._invalidateCache({ version: 1, uri }, uri, contents);
         }),
       );
     } catch (err) {

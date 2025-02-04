@@ -15,7 +15,7 @@ import { NoopLogger } from './Logger';
  * Helper functions to perform requested services from client/server.
  */
 
-export function parseGraphQLFile(text: string): CachedContent {
+export function graphqlFileToContent(text: string): CachedContent {
   const lines = text.split('\n');
   const range = new Range(
     new Position(0, 0),
@@ -48,7 +48,7 @@ export async function parseDocument(
     return templates.map(({ template, range }) => ({ query: template, range }));
   }
   if (graphQLFileExtensions.includes(ext)) {
-    return [parseGraphQLFile(text)];
+    return [graphqlFileToContent(text)];
   }
   return [];
 }
