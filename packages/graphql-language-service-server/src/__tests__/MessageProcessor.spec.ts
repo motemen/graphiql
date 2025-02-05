@@ -514,7 +514,7 @@ describe('MessageProcessor with config', () => {
 
         [
           'b/query.ts',
-          'import graphql from "graphql"\n\n\nconst a = graphql` query example { test() { isTest ...T }  }`',
+          'import graphql from "graphql"\n\n\nconst a = graphql`\nquery example { test() { isTest ...T }  }`',
         ],
         [
           'b/fragments.ts',
@@ -638,5 +638,66 @@ describe('MessageProcessor with config', () => {
 
     expect(project.lsp._logger.error).not.toHaveBeenCalled();
     project.lsp.handleShutdownRequest();
+  });
+
+  it('correctly handles a fragment inside a TypeScript file', async () => {
+    const project = new MockProject({
+      files: [
+        [
+          'schema.graphql',
+          `
+type Item {
+  foo: String
+  bar: Int
+}
+
+type Query {
+  items: [Item]
+}
+          `,
+        ],
+        [
+          'query.ts',
+          `
+import gql from 'graphql-tag'
+
+const query = gql\`
+  query {
+    items {
+      ...ItemFragment
+    }
+  }
+\`
+          `,
+        ],
+        [
+          'fragments.ts',
+          `
+import gql from 'graphql-tag'
+
+export const ItemFragment = gql\`
+  fragment ItemFragment on Item {
+    foo
+    bar
+  }
+\`
+          `,
+        ],
+        [
+          'graphql.config.json',
+          '{ "schema": "./schema.graphql", "documents": "./**.{graphql,ts}" }',
+        ],
+      ],
+    });
+
+    const initParams = await project.init('query.ts');
+    expect(initParams.diagnostics).toEqual([]);
+
+    const fragmentDefinition = await project.lsp.handleDefinitionRequest({
+      textDocument: { uri: project.uri('query.ts') },
+      position: { character: 10, line: 6 },
+    });
+
+    expect(fragmentDefinition[0]?.uri).toEqual(project.uri('fragments.ts'));
   });
 });
